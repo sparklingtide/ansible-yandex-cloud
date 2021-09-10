@@ -290,7 +290,7 @@ from enum import Enum
 from json import dumps
 from time import sleep
 
-from ansible.module_utils.yc import (  # pylint: disable=E0611, E0401
+from ansible_collections.sparklingtide.yandex_cloud.plugins.module_utils.yc import (  # pylint: disable=E0611, E0401
     YC,
     response_error_check,
 )

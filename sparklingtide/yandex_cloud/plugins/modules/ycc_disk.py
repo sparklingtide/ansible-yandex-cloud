@@ -22,7 +22,7 @@ RETURN = """
 
 import traceback
 
-from ansible.module_utils.yc import YC  # pylint: disable=E0611, E0401
+from plugins.module_utils.yc import YC  # pylint: disable=E0611, E0401
 from google.protobuf.json_format import MessageToDict
 from grpc import StatusCode
 from grpc._channel import _InactiveRpcError
