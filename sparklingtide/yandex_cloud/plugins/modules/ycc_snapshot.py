@@ -21,13 +21,14 @@ RETURN = """
 """
 
 import traceback
+from typing_extensions import Required
 
 from ansible_collections.sparklingtide.yandex_cloud.plugins.module_utils.yc import YC, response_error_check  # pylint: disable=E0611, E0401
 from google.protobuf.json_format import MessageToDict
 from grpc import StatusCode
 from grpc._channel import _InactiveRpcError
-from yandex.cloud.compute.v1.disk_service_pb2 import GetDiskRequest, CreateDiskRequest, ListDisksRequest, DeleteDiskRequest
-from yandex.cloud.compute.v1.disk_service_pb2_grpc import DiskServiceStub
+from yandex.cloud.compute.v1.snapshot_service_pb2 import CreateSnapshotRequest, DeleteSnapshotRequest, GetSnapshotRequest, ListSnapshotsRequest
+from yandex.cloud.compute.v1.snapshot_service_pb2_grpc import SnapshotServiceStub
 
 DISK_OPERATIONS = ["get_info"]
 
@@ -37,21 +38,20 @@ def disk_argument_spec():
         state=dict(choices=["present", "absent"], required=False),
         name=dict(type="str", required=True),
         folder_id=dict(type="str", required=True),
-        type_id=dict(type="str", required=True),
-        size=dict(type="int", required=True),
+        disk_id=dict(type="str", required=True),
         zone_id=dict(type="str", required=True),
         operation=dict(choices=DISK_OPERATIONS, required=False),
     )
 
 
-class YccDisk(YC):
+class YccSnapshot(YC):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.disk_service = self.sdk.client(DiskServiceStub)
+        self.snapshot_service = self.sdk.client(SnapshotServiceStub)
 
-    def _get_disk(self, disk_id):
+    def _get_snapshot(self, snapshot_id):
         try:
-            return MessageToDict(self.disk_service.Get(GetDiskRequest(disk_id=disk_id)))
+            return MessageToDict(self.disk_service.Get(GetSnapshotRequest(snapshot_id=snapshot_id)))
         except _InactiveRpcError as err:
             if err._state.code is StatusCode.INVALID_ARGUMENT:  # pylint: disable=W0212
                 return dict()
@@ -66,28 +66,28 @@ class YccDisk(YC):
 
         return params
 
-    def add_disk(self):
+    def add_snapshot(self):
         response = dict()
         spec = self._translate()
-        cloud_response = self.waiter(self.disk_service.Create(CreateDiskRequest(**spec)))
+        cloud_response = self.waiter(self.snapshot_service.Create(CreateSnapshotRequest(**spec)))
         response.update(MessageToDict(cloud_response))
         response = response_error_check(response)       
         return response
 
-    def delete_disk(self):
+    def delete_snapshot(self):
         response = dict()
         spec = self._translate()
-        disks = self.disk_service.List(ListDisksRequest(folder_id=spec["folder_id"], filter="name = \"{}\"".format(spec["name"])))
+        disks = self.snapshot_service.List(ListSnapshotsRequest(folder_id=spec["folder_id"], filter="name = \"{}\"".format(spec["name"])))
         disk_id = disks.disks[0].id
-        cloud_response = self.waiter(self.disk_service.Delete(DeleteDiskRequest(disk_id=disk_id)))
+        cloud_response = self.waiter(self.snapshot_service.Delete(DeleteSnapshotRequest(disk_id=disk_id)))
         response.update(MessageToDict(cloud_response))
         response = response_error_check(response)       
         return response
 
     def manage_states(self):
         sw = {
-            "present": self.add_disk,
-            "absent": self.delete_disk,
+            "present": self.add_snapshot,
+            "absent": self.delete_snapshot,
         }
         return sw[self.params.get("state")]()
 
@@ -100,7 +100,7 @@ class YccDisk(YC):
     def get_info(self):
         response = dict()
         id = self.params.get("id")
-        disk = self._get_disk(id)
+        disk = self._get_snapshot(id)
         if not disk:
             response["msg"] = "No such disk"
             return response
@@ -110,7 +110,7 @@ class YccDisk(YC):
 
 def main():
     argument_spec = disk_argument_spec()
-    module = YccDisk(argument_spec=argument_spec)
+    module = YccSnapshot(argument_spec=argument_spec)
     response = dict()
 
     try:
