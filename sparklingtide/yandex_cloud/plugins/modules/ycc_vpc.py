@@ -1,60 +1,59 @@
 from copy import deepcopy
 from ansible_collections.sparklingtide.yandex_cloud.plugins.module_utils.yc import response_error_check, YC
 from google.protobuf.json_format import MessageToDict
-from yandex.cloud.resourcemanager.v1.folder_service_pb2 import CreateFolderRequest, DeleteFolderRequest, ListFoldersRequest
-from yandex.cloud.resourcemanager.v1.folder_service_pb2_grpc import FolderServiceStub
-
+from yandex.cloud.vpc.v1.network_service_pb2_grpc import NetworkServiceStub
+from yandex.cloud.vpc.v1.network_service_pb2 import CreateNetworkRequest, ListNetworksRequest, DeleteNetworkRequest
 import traceback
 
 
-def folder_argument_spec():
+def vpc_argument_spec():
     return dict(
         name=dict(type="str", required=True),
-        cloud_id=dict(type="str", required=False),
+        folder_id=dict(type="str", required=True),
         state=dict(choices=["present", "absent"], required=False),
     )
 
-class YccFolder(YC):
+class YccVPC(YC):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.folder_service = self.sdk.client(FolderServiceStub)
+        self.network_service = self.sdk.client(NetworkServiceStub)
     
     def _translate(self):
         params = dict()
         for key in self.params:
-            if key == "cloud_id" or key == "name":
+            if key == "folder_id" or key == "name":
                 params[key] = self.params[key]
 
         return params
 
-    def add_folder(self):
+    def add_zone(self):
         response = dict()
         spec = self._translate()
-        cloud_response = self.waiter(self.folder_service.Create(CreateFolderRequest(**spec)))
+        cloud_response = self.waiter(self.network_service.Create(CreateNetworkRequest(**spec)))
         response.update(MessageToDict(cloud_response))
         response = response_error_check(response)       
         return response
     
-    def delete_folder(self):
+    def delete_zone(self):
         response = dict()
         spec = self._translate()
-        folders = self.folder_service.List(ListFoldersRequest(cloud_id=spec["cloud_id"], filter="name = \"{}\"".format(spec["name"])))
-        folder_id = folders.folders[0].id
-        cloud_response = self.waiter(self.folder_service.Delete(DeleteFolderRequest(folder_id=folder_id)))
+        networks = self.network_service.List(ListNetworksRequest(folder_id=spec["folder_id"], filter="name = \"{}\"".format(spec["name"])))
+        network_id = networks.networks[0].id
+        cloud_response = self.waiter(self.network_service.Delete(DeleteNetworkRequest(network_id=network_id)))
         response.update(MessageToDict(cloud_response))
         response = response_error_check(response)       
         return response
 
     def manage_states(self):
         sw = {
-            "present": self.add_folder,
-            "absent": self.delete_folder,
+            "present": self.add_vpc,
+            "absent": self.delete_vpc,
         }
         return sw[self.params.get("state")]()
 
 def main():
-    argument_spec = folder_argument_spec()
-    module = YccFolder(
+    argument_spec = vpc_argument_spec()
+    module = YccVPC(
         argument_spec=argument_spec,
     )
     response = dict()
