@@ -1,7 +1,7 @@
 from copy import deepcopy
 from ansible_collections.sparklingtide.yandex_cloud.plugins.module_utils.yc import response_error_check, YC
 from google.protobuf.json_format import MessageToDict
-from yandex.cloud.resourcemanager.v1.folder_service_pb2 import CreateFolderRequest, DeleteFolderRequest, ListFoldersRequest
+from yandex.cloud.resourcemanager.v1.folder_service_pb2 import CreateFolderRequest, GetFolderRequest, DeleteFolderRequest, ListFoldersRequest
 from yandex.cloud.resourcemanager.v1.folder_service_pb2_grpc import FolderServiceStub
 
 import traceback
@@ -11,7 +11,7 @@ def folder_argument_spec():
     return dict(
         name=dict(type="str", required=True),
         cloud_id=dict(type="str", required=False),
-        state=dict(choices=["present", "absent"], required=False),
+        state=dict(choices=["present", "absent", "get-info"], required=False),
     )
 
 class YccFolder(YC):
@@ -27,6 +27,15 @@ class YccFolder(YC):
 
         return params
 
+    def _get_folder(self, folder_id):
+        try:
+            return MessageToDict(self.folder_service.Get(GetFolderRequest(folder_id=folder_id)))
+        except _InactiveRpcError as err:
+            if err._state.code is StatusCode.INVALID_ARGUMENT:  # pylint: disable=W0212
+                return dict()
+            else:
+                raise err
+
     def add_folder(self):
         response = dict()
         spec = self._translate()
@@ -38,7 +47,8 @@ class YccFolder(YC):
     def delete_folder(self):
         response = dict()
         spec = self._translate()
-        folders = self.folder_service.List(ListFoldersRequest(cloud_id=spec["cloud_id"], filter="name = \"{}\"".format(spec["name"])))
+        folders = self.folder_service.List(ListFoldersRequest(
+            cloud_id=spec["cloud_id"], filter="name = \"{}\"".format(spec["name"])))
         folder_id = folders.folders[0].id
         cloud_response = self.waiter(self.folder_service.Delete(DeleteFolderRequest(folder_id=folder_id)))
         response.update(MessageToDict(cloud_response))
@@ -48,7 +58,7 @@ class YccFolder(YC):
     def manage_states(self):
         sw = {
             "present": self.add_folder,
-            "absent": self.delete_folder,
+            "absent": self.delete_folder
         }
         return sw[self.params.get("state")]()
 

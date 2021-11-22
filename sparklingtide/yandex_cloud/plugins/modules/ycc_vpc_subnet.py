@@ -1,22 +1,24 @@
 from copy import deepcopy
 from ansible_collections.sparklingtide.yandex_cloud.plugins.module_utils.yc import response_error_check, YC
 from google.protobuf.json_format import MessageToDict
+from yandex.cloud.vpc.v1.subnet_service_pb2_grpc import SubnetServiceStub
+from yandex.cloud.vpc.v1.subnet_service_pb2 import CreateSubnetRequest, ListSubnetsRequest, DeleteSubnetRequest
 from yandex.cloud.vpc.v1.network_service_pb2_grpc import NetworkServiceStub
 from yandex.cloud.vpc.v1.network_service_pb2 import CreateNetworkRequest, ListNetworksRequest, DeleteNetworkRequest
 import traceback
 
 
-def vpc_argument_spec():
+def vpc_subnet_argument_spec():
     return dict(
         name=dict(type="str", required=True),
         folder_id=dict(type="str", required=True),
         state=dict(choices=["present", "absent"], required=False),
     )
 
-class YccVPC(YC):
+class YccVPCSubnet(YC):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.network_service = self.sdk.client(NetworkServiceStub)
+        self.network_service = self.sdk.client(SubnetServiceStub)
     
     def _translate(self):
         params = dict()
@@ -52,8 +54,8 @@ class YccVPC(YC):
         return sw[self.params.get("state")]()
 
 def main():
-    argument_spec = vpc_argument_spec()
-    module = YccVPC(
+    argument_spec = vpc_subnet_argument_spec()
+    module = YccVPCSubnet(
         argument_spec=argument_spec,
     )
     response = dict()
