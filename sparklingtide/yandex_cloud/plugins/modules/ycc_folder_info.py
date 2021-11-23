@@ -32,7 +32,7 @@ class YccFolderInfo(YC):
             cloud_id=spec["cloud_id"], filter="name = \"{}\"".format(spec["name"]))))
         try:
             return folders["folders"][0]
-        except IndexError:
+        except KeyError:
             return dict()
 
 def main():
