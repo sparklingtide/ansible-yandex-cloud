@@ -3,7 +3,6 @@ from ansible_collections.sparklingtide.yandex_cloud.plugins.module_utils.yc impo
 from google.protobuf.json_format import MessageToDict
 from yandex.cloud.vpc.v1.subnet_service_pb2_grpc import SubnetServiceStub
 from yandex.cloud.vpc.v1.subnet_service_pb2 import CreateSubnetRequest, ListSubnetsRequest, DeleteSubnetRequest
-from yandex.cloud.vpc.v1.subnet_service_pb2 import CreateNetworkRequest, ListNetworksRequest, DeleteNetworkRequest
 import traceback
 
 
@@ -12,6 +11,7 @@ def vpc_subnet_argument_spec():
         name=dict(type="str", required=True),
         folder_id=dict(type="str", required=True),
         network_id=dict(type="str", required=True),
+        zone_id=dict(type="str", required=True),
         v4_cidr_blocks=dict(type="list", required=True),
         state=dict(choices=["present", "absent"], required=False),
     )
@@ -24,23 +24,38 @@ class YccVPCSubnet(YC):
     def _translate(self):
         params = dict()
         for key in self.params:
-            if key in ("folder_id", "network_id", "v4_cidr_blocks", "name"):
+            if key in ("folder_id", "network_id", "v4_cidr_blocks", "name", "zone_id"):
                 params[key] = self.params[key]
 
         return params
 
+    def _list_by_name(self, name, folder_id):
+        subnets = self.subnet_service.List(
+            ListSubnetsRequest(folder_id=folder_id, filter='name="%s"' % name)
+        )
+        return MessageToDict(subnets)
+        
+    def _get_subnet(self, name, folder_id):
+        subnet = self._list_by_name(name, folder_id)    
+        return subnet.get("subnets", (None,))[0]
+
+
     def add_subnet(self):
         response = dict()
         spec = self._translate()
-        cloud_response = self.waiter(self.subnet_service.Create(CreateSubnetRequest(**spec)))
-        response.update(MessageToDict(cloud_response))
-        response = response_error_check(response)       
+        subnet = self._get_subnet(spec["name"], spec["folder_id"])
+        if not subnet:
+            cloud_response = self.waiter(self.subnet_service.Create(CreateSubnetRequest(**spec)))
+            response.update(MessageToDict(cloud_response))
+            response = response_error_check(response)
+        else:
+            response = subnet       
         return response
     
     def delete_subnet(self):
         response = dict()
         spec = self._translate()
-        networks = self.subnet_service.List(ListNetworksRequest(folder_id=spec["folder_id"], filter="name = \"{}\"".format(spec["name"])))
+        networks = self.subnet_service.List(ListSubnetsRequest(folder_id=spec["folder_id"], filter="name = \"{}\"".format(spec["name"])))
         network_id = networks.networks[0].id
         cloud_response = self.waiter(self.subnet_service.Delete(DeleteNetworkRequest(network_id=network_id)))
         response.update(MessageToDict(cloud_response))

@@ -26,15 +26,28 @@ class YccVPC(YC):
 
         return params
 
-    def add_zone(self):
+    def _list_by_name(self, folder_id, name):
+        networks = self.network_service.List(ListNetworksRequest(folder_id=folder_id, filter='name="%s"' % name))
+        return MessageToDict(networks)
+
+    def _get_network(self, name, folder_id):
+        networks = self._list_by_name(name, folder_id)    
+        return networks.get("networks", (None,))[0]
+
+
+    def add_vpc(self):
         response = dict()
         spec = self._translate()
-        cloud_response = self.waiter(self.network_service.Create(CreateNetworkRequest(**spec)))
-        response.update(MessageToDict(cloud_response))
-        response = response_error_check(response)       
+        vpc = self._get_network(spec["folder_id"], spec["name"])
+        if not vpc:
+            cloud_response = self.waiter(self.network_service.Create(CreateNetworkRequest(**spec)))
+            response.update(MessageToDict(cloud_response))
+            response = response_error_check(response)
+        else:
+            response = vpc       
         return response
     
-    def delete_zone(self):
+    def delete_vpc(self):
         response = dict()
         spec = self._translate()
         networks = self.network_service.List(ListNetworksRequest(folder_id=spec["folder_id"], filter="name = \"{}\"".format(spec["name"])))
