@@ -1,5 +1,4 @@
 from copy import deepcopy
-from typing_extensions import Required
 from ansible_collections.sparklingtide.yandex_cloud.plugins.module_utils.yc import response_error_check, YC
 from google.protobuf.json_format import MessageToDict
 import winrm
@@ -31,7 +30,7 @@ class HelperWinRMPs(YC):
         spec = self._translate()
         session = winrm.Session(spec["url"], auth=(spec["user"], spec["password"]))
         r = session.run_ps(spec["script"])
-
+        return r
 def main():
     argument_spec = vpc_argument_spec()
     module = HelperWinRMPs(
