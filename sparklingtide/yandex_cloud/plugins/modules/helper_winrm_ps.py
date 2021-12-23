@@ -1,6 +1,8 @@
 from copy import deepcopy
 from ansible_collections.sparklingtide.yandex_cloud.plugins.module_utils.yc import response_error_check, YC
 from google.protobuf.json_format import MessageToDict
+from ansible.module_utils.basic import AnsibleModule
+
 import winrm
 import traceback
 
@@ -14,14 +16,11 @@ def vpc_argument_spec():
         state=dict(choices=["present", "absent"], required=False),
     )
 
-class HelperWinRMPs(YC):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        
+class HelperWinRMPs(AnsibleModule):
     def _translate(self):
         params = dict()
         for key in self.params:
-            if key == "folder_id" or key == "name":
+            if key in ("url", "script", "user", "password"):
                 params[key] = self.params[key]
 
         return params
