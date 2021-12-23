@@ -7,7 +7,6 @@ import traceback
 
 def vpc_argument_spec():
     return dict(
-        name=dict(type="str", required=True),
         url=dict(type="str", required=True),
         user=dict(type="str", required=True),
         password=dict(type="str", required=True),
