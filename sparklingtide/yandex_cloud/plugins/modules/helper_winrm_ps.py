@@ -25,11 +25,17 @@ class HelperWinRMPs(YC):
                 params[key] = self.params[key]
 
         return params
+
     def run_script(self):
         spec = self._translate()
         session = winrm.Session(spec["url"], auth=(spec["user"], spec["password"]), server_cert_validation='ignore', transport='ntlm')
         r = session.run_ps(spec["script"])
-        return r
+        return {
+            "std_out": r.std_out,
+            "status_code": r.status_code,
+            "std_err": r.std_err
+        }
+
 def main():
     argument_spec = vpc_argument_spec()
     module = HelperWinRMPs(
