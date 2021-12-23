@@ -28,7 +28,7 @@ class HelperPSRP(AnsibleModule):
 
     def run_script(self):
         spec = self._translate()
-        client = Client(spec["url"], spec["user"], spec["password"], cert_validation=False)
+        client = Client(spec["url"], username=spec["user"], password=spec["password"], cert_validation=False)
         output, streams, had_errors = client.execute_ps(spec["script"])
         return {
             "output": output,
