@@ -27,7 +27,7 @@ class HelperWinRMPs(YC):
         return params
     def run_script(self):
         spec = self._translate()
-        session = winrm.Session(spec["url"], auth=(spec["user"], spec["password"]))
+        session = winrm.Session(spec["url"], auth=(spec["user"], spec["password"]), server_cert_validation='ignore', transport='ntlm')
         r = session.run_ps(spec["script"])
         return r
 def main():
